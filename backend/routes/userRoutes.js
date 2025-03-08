@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { upload } = require('../middleware/uploadMiddleware');
+
 const {
   updateUserProfile,
   addUserAddress,
@@ -19,5 +21,15 @@ router.delete('/address/:addressId', protect, deleteUserAddress);
 // Public routes
 router.post('/reset-password', requestPasswordReset);
 router.put('/reset-password/:resetToken', resetPassword);
+
+// Add profile picture routes
+router.post(
+    '/profile/upload-picture',
+    protect,
+    upload.single('profilePicture'),
+    uploadProfilePicture
+  );
+  
+  router.delete('/profile/delete-picture', protect, deleteProfilePicture);
 
 module.exports = router;
