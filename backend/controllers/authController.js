@@ -20,7 +20,10 @@ const registerUser = asyncHandler(async (req, res) => {
   const user = await User.create({
     name,
     email,
-    password
+    password,
+    // Optionally allow role during registration (if provided in request)
+    // Only include this if you want to allow role specification during registration
+   // ...(req.body.role && req.user && req.user.role === 'admin' ? { role: req.body.role } : {})
   });
 
   if (user) {

@@ -8,7 +8,9 @@ const {
   updateUserAddress,
   deleteUserAddress,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  uploadProfilePicture,  // Make sure this is imported
+  deleteProfilePicture   // Make sure this is imported
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -28,7 +30,7 @@ router.post(
     protect,
     upload.single('profilePicture'),
     uploadProfilePicture
-  );
+);
   
   router.delete('/profile/delete-picture', protect, deleteProfilePicture);
 
