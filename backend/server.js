@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+
 
 // Load env vars
 dotenv.config();
@@ -21,7 +23,8 @@ app.use(cors());
 
 // Mount routers
 app.use('/api/auth', authRoutes);
-
+// Mount the user routes
+app.use('/api/users', userRoutes);
 // Error Middleware
 app.use(errorHandler);
 
