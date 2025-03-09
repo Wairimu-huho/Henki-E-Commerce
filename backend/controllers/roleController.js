@@ -78,7 +78,7 @@ const deleteUser = asyncHandler(async (req, res) => {
       throw new Error('Admins cannot delete their own account');
     }
     
-    await user.remove();
+    await user.deleteOne();
     res.json({ message: 'User removed' });
   } else {
     res.status(404);
