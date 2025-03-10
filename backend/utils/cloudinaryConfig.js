@@ -1,17 +1,20 @@
-require('dotenv').config();
+// utils/cloudinaryConfig.js
+require('dotenv').config(); // Direct import of dotenv
 const cloudinary = require('cloudinary').v2;
 
-
-console.log('Cloudinary Config:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
+// Debug information
+console.log('Attempting to configure Cloudinary with:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'direct_config_used',
+  api_key: process.env.CLOUDINARY_API_KEY || 'direct_config_used',
   api_secret: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Not set'
 });
-// Configure Cloudinary
+
+// Configure with direct values as fallback if env variables aren't available
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  // Use environment variables first, then fall back to direct values
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dwjmzbinj",
+  api_key: process.env.CLOUDINARY_API_KEY || "631293355919453",
+  api_secret: process.env.CLOUDINARY_API_SECRET || "ooP80jQO_loRWkHpLiLkNQrb1nc"
 });
 
 /**
@@ -21,10 +24,18 @@ cloudinary.config({
  * @returns {Promise} Cloudinary upload result
  */
 const uploadImage = async (filePath, folder = 'ecommerce-profiles') => {
-  return await cloudinary.uploader.upload(filePath, {
-    folder,
-    resource_type: 'image'
-  });
+  try {
+    console.log(`Attempting to upload image to Cloudinary folder: ${folder}`);
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder,
+      resource_type: 'image'
+    });
+    console.log('Upload successful, image URL:', result.secure_url);
+    return result;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw error;
+  }
 };
 
 /**
@@ -33,8 +44,15 @@ const uploadImage = async (filePath, folder = 'ecommerce-profiles') => {
  * @returns {Promise} Cloudinary delete result
  */
 const deleteImage = async (publicId) => {
-  return await cloudinary.uploader.destroy(publicId);
+  try {
+    console.log(`Attempting to delete image from Cloudinary: ${publicId}`);
+    const result = await cloudinary.uploader.destroy(publicId);
+    console.log('Delete result:', result);
+    return result;
+  } catch (error) {
+    console.error('Cloudinary delete error:', error);
+    throw error;
+  }
 };
-
 
 module.exports = { uploadImage, deleteImage };

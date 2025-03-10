@@ -1,4 +1,5 @@
 // middleware/uploadMiddleware.js
+require('dotenv').config(); // Direct import of dotenv
 const path = require('path');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
@@ -27,14 +28,14 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Initialize profile upload middleware
+// Initialize profile upload with 5MB limit
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5000000 }, // 5MB max file size
   fileFilter: fileFilter
 });
 
-// Initialize product upload middleware
+// Initialize product upload with 10MB limit
 const productImageUpload = multer({
   storage: storage,
   limits: { fileSize: 10000000 }, // 10MB max file size for products

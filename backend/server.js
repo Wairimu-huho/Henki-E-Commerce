@@ -10,7 +10,8 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const productImageRoutes = require('./routes/productImageRoutes');
-
+const cookieParser = require('cookie-parser');
+const cartRoutes = require('./routes/cartRoutes');
 
 
 
@@ -28,6 +29,8 @@ app.use(express.json());
 // Enable CORS
 app.use(cors());
 
+// Add cookie parser middleware 
+app.use(cookieParser());
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -42,6 +45,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 // product image //
 app.use('/api/products', productImageRoutes);
+//shopping cart
+app.use('/api/cart', cartRoutes);
 
 
 
