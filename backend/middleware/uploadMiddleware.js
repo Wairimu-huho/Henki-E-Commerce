@@ -1,8 +1,7 @@
+// middleware/uploadMiddleware.js
 const path = require('path');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-
-
 
 // Set storage engine
 const storage = multer.diskStorage({
@@ -28,11 +27,18 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Initialize upload
+// Initialize profile upload middleware
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5000000 }, // 5MB max file size
   fileFilter: fileFilter
 });
 
-module.exports = { upload };
+// Initialize product upload middleware
+const productImageUpload = multer({
+  storage: storage,
+  limits: { fileSize: 10000000 }, // 10MB max file size for products
+  fileFilter: fileFilter
+});
+
+module.exports = { upload, productImageUpload };

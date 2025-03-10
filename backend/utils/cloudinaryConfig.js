@@ -1,5 +1,12 @@
+require('dotenv').config();
 const cloudinary = require('cloudinary').v2;
 
+
+console.log('Cloudinary Config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Not set'
+});
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -28,5 +35,6 @@ const uploadImage = async (filePath, folder = 'ecommerce-profiles') => {
 const deleteImage = async (publicId) => {
   return await cloudinary.uploader.destroy(publicId);
 };
+
 
 module.exports = { uploadImage, deleteImage };

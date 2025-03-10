@@ -7,6 +7,9 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const productRoutes = require('./routes/productRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const productImageRoutes = require('./routes/productImageRoutes');
 
 
 
@@ -32,8 +35,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 // Mount the admin routes
 app.use('/api/admin', adminRoutes);
-//reviews
+// reviews //
 app.use('/api/reviews', reviewRoutes);
+// products and category //
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+// product image //
+app.use('/api/products', productImageRoutes);
+
 
 
 // Error Middleware
