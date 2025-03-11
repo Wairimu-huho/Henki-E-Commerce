@@ -1,71 +1,168 @@
-// This is a placeholder for a real email service
-// In production, you would use a service like Nodemailer, SendGrid, etc.
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+const handlebars = require('handlebars');
 
-/**
- * Send an email
- * @param {string} to Recipient email
- * @param {string} subject Email subject
- * @param {string} text Email body text
- * @param {string} html Email body HTML
- */
-const sendEmail = async (to, subject, text, html) => {
-    // In development, just log the email
-    console.log(`
-      ==================================
-      SENDING EMAIL:
-      To: ${to}
-      Subject: ${subject}
-      Text: ${text}
-      HTML: ${html}
-      ==================================
-    `);
-  
-    // In production, you would use something like:
-    /*
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_SECURE === 'true',
+// Create email transporter
+const createTransporter = () => {
+  // For production
+  if (process.env.NODE_ENV === 'production') {
+    return nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
+      secure: process.env.EMAIL_SECURE === 'true',
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD
       }
     });
+  } 
   
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+  // For development - use Ethereal for testing
+  return nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.ETHEREAL_EMAIL,
+      pass: process.env.ETHEREAL_PASSWORD
+    }
+  });
+};
+
+// Read email template
+const readTemplate = (templateName) => {
+  const templatePath = path.join(__dirname, '../templates/emails', `${templateName}.html`);
+  const template = fs.readFileSync(templatePath, 'utf-8');
+  return handlebars.compile(template);
+};
+
+// Send email using template
+const sendEmail = async (to, subject, templateName, data) => {
+  try {
+    const transporter = createTransporter();
+    const template = readTemplate(templateName);
+    const html = template(data);
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"Your E-commerce Store" <noreply@yourdomain.com>',
       to,
       subject,
-      text,
-      html
-    });
-    */
+      html,
+      text: html.replace(/<[^>]*>/g, '') // Simple text version
+    };
+    
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log(`Email sent: ${info.messageId}`);
+    
+    // For development - log test URL
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+    }
+    
+    return info;
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    throw new Error(`Failed to send email: ${error.message}`);
+  }
+};
+
+// Order confirmation email
+const sendOrderConfirmation = async (order, user) => {
+  const subject = `Order Confirmation #${order.orderNumber}`;
   
-    return true;
+  const data = {
+    customerName: order.shippingAddress.fullName,
+    orderNumber: order.orderNumber,
+    orderDate: new Date(order.createdAt).toLocaleDateString(),
+    orderItems: order.orderItems.map(item => ({
+      name: item.name,
+      price: item.price.toFixed(2),
+      quantity: item.quantity,
+      subtotal: (item.price * item.quantity).toFixed(2),
+      image: item.image
+    })),
+    shippingAddress: {
+      fullName: order.shippingAddress.fullName,
+      address: order.shippingAddress.address,
+      city: order.shippingAddress.city,
+      postalCode: order.shippingAddress.postalCode,
+      country: order.shippingAddress.country
+    },
+    subtotal: order.itemsPrice.toFixed(2),
+    shipping: order.shippingPrice.toFixed(2),
+    tax: order.taxPrice.toFixed(2),
+    discount: order.discountPrice.toFixed(2),
+    total: order.totalPrice.toFixed(2),
+    paymentMethod: order.paymentMethod,
+    orderLink: `${process.env.FRONTEND_URL}/orders/${order._id}`
   };
   
-  /**
-   * Send a password reset email
-   * @param {string} to Recipient email
-   * @param {string} resetUrl Reset URL with token
-   */
-  const sendPasswordResetEmail = async (to, resetUrl) => {
-    const subject = 'Password Reset Request';
-    const text = `You requested a password reset. Please go to: ${resetUrl} to reset your password. This link is valid for 10 minutes.`;
-    const html = `
-      <h1>Password Reset</h1>
-      <p>You requested a password reset.</p>
-      <p>Please click the following link to reset your password:</p>
-      <a href="${resetUrl}" target="_blank">Reset Password</a>
-      <p>This link is valid for 10 minutes.</p>
-      <p>If you did not request this, please ignore this email.</p>
-    `;
+  return sendEmail(user.email, subject, 'order-confirmation', data);
+};
+
+// Shipping notification email
+const sendShippingNotification = async (order, user, trackingInfo) => {
+  const subject = `Your Order #${order.orderNumber} Has Shipped`;
   
-    return await sendEmail(to, subject, text, html);
+  const data = {
+    customerName: order.shippingAddress.fullName,
+    orderNumber: order.orderNumber,
+    shippingDate: new Date().toLocaleDateString(),
+    trackingNumber: trackingInfo.trackingNumber,
+    carrierName: trackingInfo.carrier || 'Our Shipping Partner',
+    trackingUrl: trackingInfo.trackingUrl || '#',
+    estimatedDelivery: trackingInfo.estimatedDelivery || 'Soon',
+    orderLink: `${process.env.FRONTEND_URL}/orders/${order._id}`
   };
   
-  module.exports = {
-    sendEmail,
-    sendPasswordResetEmail
+  return sendEmail(user.email, subject, 'shipping-notification', data);
+};
+
+// Delivery confirmation email
+const sendDeliveryConfirmation = async (order, user) => {
+  const subject = `Your Order #${order.orderNumber} Has Been Delivered`;
+  
+  const data = {
+    customerName: order.shippingAddress.fullName,
+    orderNumber: order.orderNumber,
+    deliveryDate: new Date(order.deliveredAt).toLocaleDateString(),
+    orderItems: order.orderItems.map(item => ({
+      name: item.name,
+      image: item.image
+    })),
+    reviewLink: `${process.env.FRONTEND_URL}/review/${order._id}`,
+    supportEmail: process.env.SUPPORT_EMAIL || 'support@yourdomain.com'
   };
   
+  return sendEmail(user.email, subject, 'delivery-confirmation', data);
+};
+
+// Order cancellation email
+const sendCancellationNotification = async (order, user, reason) => {
+  const subject = `Your Order #${order.orderNumber} Has Been Cancelled`;
+  
+  const data = {
+    customerName: order.shippingAddress.fullName,
+    orderNumber: order.orderNumber,
+    cancellationDate: new Date().toLocaleDateString(),
+    cancellationReason: reason || 'As requested',
+    refundInfo: order.isPaid ? 'A refund has been initiated and will be processed according to your payment method\'s policy.' : 'No payment was processed for this order.',
+    orderItems: order.orderItems.map(item => ({
+      name: item.name,
+      quantity: item.quantity
+    })),
+    supportEmail: process.env.SUPPORT_EMAIL || 'support@yourdomain.com'
+  };
+  
+  return sendEmail(user.email, subject, 'order-cancellation', data);
+};
+
+module.exports = {
+  sendEmail,
+  sendOrderConfirmation,
+  sendShippingNotification,
+  sendDeliveryConfirmation,
+  sendCancellationNotification
+};

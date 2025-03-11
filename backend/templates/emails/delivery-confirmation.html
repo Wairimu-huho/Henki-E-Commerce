@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Confirmation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #4a69bd;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .delivery-info {
+      background-color: #f9f9f9;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .item {
+      border: 1px solid #eee;
+      padding: 10px;
+      text-align: center;
+    }
+    .button {
+      display: inline-block;
+      background-color: #4a69bd;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.8em;
+      color: #777;
+      border-top: 1px solid #eee;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Your Order Has Been Delivered!</h1>
+    </div>
+    
+    <div class="content">
+      <p>Hello {{customerName}},</p>
+      <p>Your order #{{orderNumber}} was delivered on {{deliveryDate}}.</p>
+      
+      <div class="delivery-info">
+        <h2>Items Delivered</h2>
+        <div class="item-grid">
+          {{#each orderItems}}
+          <div class="item">
+            <p>{{name}}</p>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      
+      <p>We hope you're enjoying your purchase! If you have a moment, we'd appreciate your feedback on the products.</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="{{reviewLink}}" class="button">Leave a Review</a>
+      </div>
+      
+      <p>If you encounter any issues with your order, please contact our customer support at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>.</p>
+      
+      <p>Thank you for shopping with us!</p>
+    </div>
+    
+    <div class="footer">
+      <p>&copy; 2025 Your Store Name. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

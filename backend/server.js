@@ -12,7 +12,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const productImageRoutes = require('./routes/productImageRoutes');
 const cookieParser = require('cookie-parser');
 const cartRoutes = require('./routes/cartRoutes');
-
+const orderRoutes = require('./routes/orderRoutes');
 
 
 // Load env vars
@@ -47,7 +47,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productImageRoutes);
 //shopping cart
 app.use('/api/cart', cartRoutes);
-
+//order routes
+app.use('/api/orders', orderRoutes);
 
 
 // Error Middleware

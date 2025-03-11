@@ -1,3 +1,4 @@
+// routes/cartRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -8,7 +9,8 @@ const {
   clearCart,
   applyCoupon,
   removeCoupon,
-  setShippingMethod
+  setShippingMethod,
+  testAddToCart  // Make sure to include this in the import
 } = require('../controllers/cartController');
 const { protect, customer } = require('../middleware/authMiddleware');
 
@@ -34,5 +36,8 @@ router.route('/coupon')
 // Shipping method routes
 router.route('/shipping-method')
   .post(setShippingMethod);
+
+// Test route
+router.post('/test-add', protect, testAddToCart);
 
 module.exports = router;
