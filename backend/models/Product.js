@@ -171,6 +171,34 @@ productSchema.pre('save', async function(next) {
   next();
 });
 
+// Text index for full-text search
+productSchema.index({ 
+  name: 'text', 
+  description: 'text', 
+  brand: 'text',
+  tags: 'text' 
+}, { 
+  weights: { 
+    name: 10, 
+    brand: 5, 
+    tags: 3, 
+    description: 1 
+  },
+  name: 'product_text_index'
+});
+
+// Standard indexes for common filters
+productSchema.index({ category: 1 });
+productSchema.index({ brand: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ rating: 1 });
+productSchema.index({ createdAt: 1 });
+productSchema.index({ countInStock: 1 });
+productSchema.index({ featured: 1 });
+productSchema.index({ isActive: 1 });
+productSchema.index({ isSale: 1, saleEndDate: 1 });
+productSchema.index({ slug: 1 }, { unique: true });
+
 const Product = mongoose.model('Product', productSchema);
 
 module.exports = Product;

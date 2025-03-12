@@ -14,6 +14,7 @@ const cookieParser = require('cookie-parser');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 
 // Load env vars
@@ -52,6 +53,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 // payment routes
 app.use('/api/payments', paymentRoutes);
+// search routes
+app.use('/api/search', searchRoutes);
 
 
 // Error Middleware
