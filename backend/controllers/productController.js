@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const slugify = require('slugify');
+const { getCachedData, clearCache, clearCachePattern } = require('../utils/cacheManager');
 
 // @desc    Create a product
 // @route   POST /api/products
@@ -68,6 +69,8 @@ const createProduct = asyncHandler(async (req, res) => {
   });
 
   if (product) {
+    // Clear products cache after successful creation
+    clearCachePattern('products:*');
     res.status(201).json(product);
   } else {
     res.status(400);
@@ -82,84 +85,105 @@ const getProducts = asyncHandler(async (req, res) => {
   const pageSize = Number(req.query.pageSize) || 10;
   const page = Number(req.query.page) || 1;
   
-  const keyword = req.query.keyword
-    ? {
-        name: {
-          $regex: req.query.keyword,
-          $options: 'i'
-        }
+  // Create a cache key based on query parameters
+  const queryString = JSON.stringify(req.query);
+  const cacheKey = `products:${queryString}:${page}:${pageSize}`;
+  
+  // Try to get from cache first
+  const result = await getCachedData(
+    cacheKey,
+    async () => {
+      const keyword = req.query.keyword
+        ? {
+            name: {
+              $regex: req.query.keyword,
+              $options: 'i'
+            }
+          }
+        : {};
+        
+      const category = req.query.category
+        ? { category: req.query.category }
+        : {};
+        
+      const brand = req.query.brand
+        ? { brand: req.query.brand }
+        : {};
+        
+      const priceMin = req.query.priceMin
+        ? { price: { $gte: Number(req.query.priceMin) } }
+        : {};
+        
+      const priceMax = req.query.priceMax
+        ? { price: { ...priceMin.price, $lte: Number(req.query.priceMax) } }
+        : priceMin;
+        
+      const featured = req.query.featured === 'true'
+        ? { featured: true }
+        : {};
+        
+      const inStock = req.query.inStock === 'true'
+        ? { countInStock: { $gt: 0 } }
+        : {};
+
+      const sort = {};
+      if (req.query.sortBy) {
+        const parts = req.query.sortBy.split(':');
+        sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
+      } else {
+        sort.createdAt = -1;  // Default sort by newest
       }
-    : {};
-    
-  const category = req.query.category
-    ? { category: req.query.category }
-    : {};
-    
-  const brand = req.query.brand
-    ? { brand: req.query.brand }
-    : {};
-    
-  const priceMin = req.query.priceMin
-    ? { price: { $gte: Number(req.query.priceMin) } }
-    : {};
-    
-  const priceMax = req.query.priceMax
-    ? { price: { ...priceMin.price, $lte: Number(req.query.priceMax) } }
-    : priceMin;
-    
-  const featured = req.query.featured === 'true'
-    ? { featured: true }
-    : {};
-    
-  const inStock = req.query.inStock === 'true'
-    ? { countInStock: { $gt: 0 } }
-    : {};
 
-  const sort = {};
-  if (req.query.sortBy) {
-    const parts = req.query.sortBy.split(':');
-    sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
-  } else {
-    sort.createdAt = -1;  // Default sort by newest
-  }
+      const query = {
+        ...keyword,
+        ...category,
+        ...brand,
+        ...priceMax,
+        ...featured,
+        ...inStock,
+        isActive: true
+      };
 
-  const query = {
-    ...keyword,
-    ...category,
-    ...brand,
-    ...priceMax,
-    ...featured,
-    ...inStock,
-    isActive: true
-  };
+      const count = await Product.countDocuments(query);
+      const products = await Product.find(query)
+        .populate('category', 'name')
+        .populate('user', 'name')
+        .sort(sort)
+        .limit(pageSize)
+        .skip(pageSize * (page - 1));
 
-  const count = await Product.countDocuments(query);
-  const products = await Product.find(query)
-    .populate('category', 'name')
-    .populate('user', 'name')
-    .sort(sort)
-    .limit(pageSize)
-    .skip(pageSize * (page - 1));
+      return {
+        products,
+        page,
+        pages: Math.ceil(count / pageSize),
+        totalProducts: count
+      };
+    },
+    'short' // Short cache duration for product listings
+  );
 
-  res.json({
-    products,
-    page,
-    pages: Math.ceil(count / pageSize),
-    totalProducts: count
-  });
+  res.json(result);
 });
 
 // @desc    Get a product by ID
 // @route   GET /api/products/:id
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id)
-    .populate('category', 'name')
-    .populate('user', 'name')
-    .populate({
-      path: 'reviews.user',
-      select: 'name profilePicture'
-    });
+  const cacheKey = `product:${req.params.id}`;
+  
+  const product = await getCachedData(
+    cacheKey,
+    async () => {
+      return Product.findById(req.params.id)
+        .populate('category', 'name')
+        .populate('user', 'name')
+        .populate({
+          path: 'reviews.user',
+          select: 'name profilePicture'
+        });
+    },
+    'medium' // Medium cache duration for individual products
+  );
 
   if (product) {
     res.json(product);
@@ -173,13 +197,21 @@ const getProductById = asyncHandler(async (req, res) => {
 // @route   GET /api/products/slug/:slug
 // @access  Public
 const getProductBySlug = asyncHandler(async (req, res) => {
-  const product = await Product.findOne({ slug: req.params.slug })
-    .populate('category', 'name')
-    .populate('user', 'name')
-    .populate({
-      path: 'reviews.user',
-      select: 'name profilePicture'
-    });
+  const cacheKey = `product:slug:${req.params.slug}`;
+  
+  const product = await getCachedData(
+    cacheKey,
+    async () => {
+      return Product.findOne({ slug: req.params.slug })
+        .populate('category', 'name')
+        .populate('user', 'name')
+        .populate({
+          path: 'reviews.user',
+          select: 'name profilePicture'
+        });
+    },
+    'medium' // Medium cache duration for individual products
+  );
 
   if (product) {
     res.json(product);
@@ -293,6 +325,14 @@ const updateProduct = asyncHandler(async (req, res) => {
   product.isActive = isActive !== undefined ? isActive : product.isActive;
 
   const updatedProduct = await product.save();
+  
+  // Clear relevant caches
+  clearCachePattern('products:*');
+  clearCache(`product:${req.params.id}`);
+  if (product.slug) {
+    clearCache(`product:slug:${product.slug}`);
+  }
+  
   res.json(updatedProduct);
 });
 
@@ -317,6 +357,14 @@ const deleteProduct = asyncHandler(async (req, res) => {
   }
 
   await product.deleteOne();
+  
+  // Clear relevant caches
+  clearCachePattern('products:*');
+  clearCache(`product:${req.params.id}`);
+  if (product.slug) {
+    clearCache(`product:slug:${product.slug}`);
+  }
+  
   res.json({ message: 'Product removed' });
 });
 
@@ -355,6 +403,13 @@ const createProductReview = asyncHandler(async (req, res) => {
   // Rating and numReviews will be updated by pre-save middleware
   
   await product.save();
+  
+  // Clear caches for this product
+  clearCache(`product:${req.params.id}`);
+  if (product.slug) {
+    clearCache(`product:slug:${product.slug}`);
+  }
+  
   res.status(201).json({ message: 'Review added' });
 });
 
@@ -363,10 +418,17 @@ const createProductReview = asyncHandler(async (req, res) => {
 // @access  Public
 const getTopProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 5;
+  const cacheKey = `products:top:${limit}`;
   
-  const products = await Product.find({ isActive: true })
-    .sort({ rating: -1 })
-    .limit(limit);
+  const products = await getCachedData(
+    cacheKey,
+    async () => {
+      return Product.find({ isActive: true })
+        .sort({ rating: -1 })
+        .limit(limit);
+    },
+    'medium' // Medium cache duration for top products
+  );
 
   res.json(products);
 });
@@ -376,13 +438,20 @@ const getTopProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getFeaturedProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 8;
+  const cacheKey = `products:featured:${limit}`;
   
-  const products = await Product.find({ 
-    featured: true,
-    isActive: true
-  })
-    .sort({ createdAt: -1 })
-    .limit(limit);
+  const products = await getCachedData(
+    cacheKey,
+    async () => {
+      return Product.find({ 
+        featured: true,
+        isActive: true
+      })
+        .sort({ createdAt: -1 })
+        .limit(limit);
+    },
+    'medium' // Medium cache duration for featured products
+  );
 
   res.json(products);
 });
@@ -392,14 +461,21 @@ const getFeaturedProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getSaleProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 8;
+  const cacheKey = `products:sale:${limit}`;
   
-  const products = await Product.find({ 
-    isSale: true,
-    saleEndDate: { $gte: new Date() },
-    isActive: true
-  })
-    .sort({ saleEndDate: 1 })
-    .limit(limit);
+  const products = await getCachedData(
+    cacheKey,
+    async () => {
+      return Product.find({ 
+        isSale: true,
+        saleEndDate: { $gte: new Date() },
+        isActive: true
+      })
+        .sort({ saleEndDate: 1 })
+        .limit(limit);
+    },
+    'short' // Short cache duration for sale products (as they have time sensitivity)
+  );
 
   res.json(products);
 });
@@ -409,22 +485,33 @@ const getSaleProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getRelatedProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 4;
+  const cacheKey = `products:related:${req.params.id}:${limit}`;
   
-  const product = await Product.findById(req.params.id);
+  const result = await getCachedData(
+    cacheKey,
+    async () => {
+      const product = await Product.findById(req.params.id);
+      
+      if (!product) {
+        return null;
+      }
+      
+      return Product.find({
+        category: product.category,
+        _id: { $ne: product._id },
+        isActive: true
+      })
+        .limit(limit);
+    },
+    'medium' // Medium cache duration for related products
+  );
   
-  if (!product) {
+  if (result === null) {
     res.status(404);
     throw new Error('Product not found');
   }
-  
-  const relatedProducts = await Product.find({
-    category: product.category,
-    _id: { $ne: product._id },
-    isActive: true
-  })
-    .limit(limit);
     
-  res.json(relatedProducts);
+  res.json(result);
 });
 
 module.exports = {

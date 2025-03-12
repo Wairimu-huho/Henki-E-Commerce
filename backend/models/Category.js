@@ -48,6 +48,15 @@ categorySchema.pre('save', function(next) {
   next();
 });
 
+// Index for parent-child relationship queries
+categorySchema.index({ parent: 1 });
+
+// Index for active status
+categorySchema.index({ isActive: 1 });
+
+// Unique slug index
+categorySchema.index({ slug: 1 }, { unique: true });
+
 const Category = mongoose.model('Category', categorySchema);
 
 module.exports = Category;

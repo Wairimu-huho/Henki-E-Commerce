@@ -112,6 +112,12 @@ cartSchema.virtual('itemsCount').get(function() {
   return this.items.reduce((count, item) => count + item.quantity, 0);
 });
 
+// Index for user lookup
+cartSchema.index({ user: 1 }, { unique: true, sparse: true });
+
+// Index for session-based carts
+cartSchema.index({ sessionId: 1 }, { unique: true, sparse: true });
+
 const Cart = mongoose.model('Cart', cartSchema);
 
 module.exports = Cart;

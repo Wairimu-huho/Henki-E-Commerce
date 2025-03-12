@@ -15,7 +15,9 @@ const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const searchRoutes = require('./routes/searchRoutes');
-
+const { logSlowQueries } = require('./middleware/mongoQueryMiddleware');
+const dbMetrics = require('./utils/dbMetrics');
+const { protect, admin } = require('./middleware/authMiddleware');
 
 // Load env vars
 dotenv.config();
@@ -33,6 +35,12 @@ app.use(cors());
 
 // Add cookie parser middleware 
 app.use(cookieParser());
+
+// Use the slow query monitoring middleware (before routes)
+app.use(logSlowQueries);
+
+// Start database metrics monitoring
+dbMetrics.startMonitoring();
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -56,6 +64,10 @@ app.use('/api/payments', paymentRoutes);
 // search routes
 app.use('/api/search', searchRoutes);
 
+// Add database metrics endpoint (admin only)
+app.get('/api/admin/metrics/db', protect, admin, (req, res) => {
+  res.json(dbMetrics.getStats());
+});
 
 // Error Middleware
 app.use(errorHandler);

@@ -200,6 +200,22 @@ orderSchema.pre('save', async function(next) {
   next();
 });
 
+// Index for user to quickly find their orders
+orderSchema.index({ user: 1, createdAt: -1 });
+
+// Index for order status queries (common filter in admin panels)
+orderSchema.index({ status: 1 });
+
+// Index for order number searches (used in customer service)
+orderSchema.index({ orderNumber: 1 }, { unique: true });
+
+// Compound index for date-range queries with status
+orderSchema.index({ createdAt: 1, status: 1 });
+
+// Payment status indexes
+orderSchema.index({ isPaid: 1 });
+orderSchema.index({ isDelivered: 1 });
+
 const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;
