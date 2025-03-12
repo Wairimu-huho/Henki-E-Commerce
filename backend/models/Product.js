@@ -16,10 +16,27 @@ const reviewSchema = new mongoose.Schema({
     min: 1,
     max: 5
   },
+  title: {
+    type: String,
+    default: ''
+  },
   comment: {
     type: String,
     required: true
-  }
+  },
+  helpfulVotes: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+      },
+      isHelpful: {
+        type: Boolean,
+        required: true
+      }
+    }
+  ]
 }, {
   timestamps: true
 });

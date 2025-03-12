@@ -1,21 +1,26 @@
-// routes/reviewRoutes.js
 const express = require('express');
 const router = express.Router();
-const { 
+const {
+  getReviewById,
   updateReview,
-  // Other controller functions...
+  deleteReview,
+  voteReview,
+  getUserReviews
 } = require('../controllers/reviewController');
-const { protect, resourceOwner } = require('../middleware/authMiddleware');
-const Review = require('../models/Review');
+const { protect, admin } = require('../middleware/authMiddleware');
 
-// This is where you apply the resourceOwner middleware
-router.put(
-  '/:reviewId',
-  protect,
-  resourceOwner(Review, 'reviewId'),
-  updateReview
-);
+// Product-specific review routes are in productRoutes.js
 
-// Other review routes...
+// Individual review routes
+router.route('/:id')
+  .get(getReviewById)
+  .put(protect, updateReview)
+  .delete(protect, deleteReview);
+
+router.route('/:id/vote')
+  .post(protect, voteReview);
+
+router.route('/my-reviews')
+  .get(protect, getUserReviews);
 
 module.exports = router;
