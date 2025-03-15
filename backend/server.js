@@ -31,7 +31,10 @@ const app = express();
 app.use(express.json());
 
 // Enable CORS
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Your frontend development URL
+  credentials: true
+}));
 
 // Add cookie parser middleware 
 app.use(cookieParser());

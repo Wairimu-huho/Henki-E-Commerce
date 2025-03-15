@@ -17,6 +17,7 @@ const { protect, customer } = require('../middleware/authMiddleware');
 // Cart and cart items routes
 router.route('/')
   .get(getCart);
+  
 
 router.route('/items')
   .post(addItemToCart)
