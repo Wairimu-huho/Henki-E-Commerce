@@ -46,7 +46,16 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  profilePicture: {
+    url: {
+      type: String,
+      default: 'https://res.cloudinary.com/your-cloud-name/image/upload/v1/default-profile.png'
+    },
+    publicId: {
+      type: String
+    }
+  },
 });
 
 // Encrypt password using bcrypt
@@ -63,5 +72,14 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Index for email queries (unique, used in login/registration)
+userSchema.index({ email: 1 }, { unique: true });
+
+// Index for role-based queries (used in admin panels)
+userSchema.index({ role: 1 });
+
+// Compound index for addresses (for faster address lookups)
+userSchema.index({ 'addresses.isDefault': 1 });
 
 module.exports = mongoose.model('User', userSchema);
