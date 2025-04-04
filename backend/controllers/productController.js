@@ -4,6 +4,31 @@ const Category = require('../models/Category');
 const slugify = require('slugify');
 const { getCachedData, clearCache, clearCachePattern } = require('../utils/cacheManager');
 
+// Add this helper function at the top of your file
+const buildProductQuery = (queryParams) => {
+  const query = {};
+  
+  if (queryParams.category) {
+    query.category = queryParams.category;
+  }
+  
+  if (queryParams.search) {
+    query.name = { $regex: queryParams.search, $options: 'i' };
+  }
+  
+  if (queryParams.minPrice || queryParams.maxPrice) {
+    query.price = {};
+    if (queryParams.minPrice) query.price.$gte = Number(queryParams.minPrice);
+    if (queryParams.maxPrice) query.price.$lte = Number(queryParams.maxPrice);
+  }
+
+  if (queryParams.isActive !== undefined) {
+    query.isActive = queryParams.isActive === 'true';
+  }
+
+  return query;
+};
+
 // @desc    Create a product
 // @route   POST /api/products
 // @access  Private/Seller or Admin
@@ -82,87 +107,32 @@ const createProduct = asyncHandler(async (req, res) => {
 // @route   GET /api/products
 // @access  Public
 const getProducts = asyncHandler(async (req, res) => {
-  const pageSize = Number(req.query.pageSize) || 10;
-  const page = Number(req.query.page) || 1;
-  
-  // Create a cache key based on query parameters
-  const queryString = JSON.stringify(req.query);
-  const cacheKey = `products:${queryString}:${page}:${pageSize}`;
-  
-  // Try to get from cache first
-  const result = await getCachedData(
-    cacheKey,
-    async () => {
-      const keyword = req.query.keyword
-        ? {
-            name: {
-              $regex: req.query.keyword,
-              $options: 'i'
-            }
-          }
-        : {};
-        
-      const category = req.query.category
-        ? { category: req.query.category }
-        : {};
-        
-      const brand = req.query.brand
-        ? { brand: req.query.brand }
-        : {};
-        
-      const priceMin = req.query.priceMin
-        ? { price: { $gte: Number(req.query.priceMin) } }
-        : {};
-        
-      const priceMax = req.query.priceMax
-        ? { price: { ...priceMin.price, $lte: Number(req.query.priceMax) } }
-        : priceMin;
-        
-      const featured = req.query.featured === 'true'
-        ? { featured: true }
-        : {};
-        
-      const inStock = req.query.inStock === 'true'
-        ? { countInStock: { $gt: 0 } }
-        : {};
+  try {
+    const pageSize = Number(req.query.pageSize) || 10;
+    const page = Number(req.query.page) || 1;
+    
+    const query = buildProductQuery(req.query);
+    const count = await Product.countDocuments(query);
+    
+    const products = await Product.find(query)
+      .populate('category', 'name')
+      .limit(pageSize)
+      .skip(pageSize * (page - 1))
+      .sort({ createdAt: -1 });
 
-      const sort = {};
-      if (req.query.sortBy) {
-        const parts = req.query.sortBy.split(':');
-        sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
-      } else {
-        sort.createdAt = -1;  // Default sort by newest
-      }
-
-      const query = {
-        ...keyword,
-        ...category,
-        ...brand,
-        ...priceMax,
-        ...featured,
-        ...inStock,
-        isActive: true
-      };
-
-      const count = await Product.countDocuments(query);
-      const products = await Product.find(query)
-        .populate('category', 'name')
-        .populate('user', 'name')
-        .sort(sort)
-        .limit(pageSize)
-        .skip(pageSize * (page - 1));
-
-      return {
-        products,
-        page,
-        pages: Math.ceil(count / pageSize),
-        totalProducts: count
-      };
-    },
-    'short' // Short cache duration for product listings
-  );
-
-  res.json(result);
+    res.json({
+      products,
+      page,
+      pages: Math.ceil(count / pageSize),
+      total: count
+    });
+  } catch (error) {
+    console.error('Error in getProducts:', error);
+    res.status(500).json({
+      message: 'Error fetching products',
+      error: error.message
+    });
+  }
 });
 
 // @desc    Get a product by ID

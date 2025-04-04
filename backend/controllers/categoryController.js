@@ -46,28 +46,24 @@ const createCategory = asyncHandler(async (req, res) => {
 // @route   GET /api/categories
 // @access  Public
 const getCategories = asyncHandler(async (req, res) => {
-  // Only get active categories by default
-  const showAll = req.query.showAll === 'true' && req.user?.role === 'admin';
-  const cacheKey = `categories:all:${showAll}`;
+  console.log('Getting categories - Start');
+  console.time('getCategories');
   
-  // Try to get from cache first
-  const categories = await getCachedData(
-    cacheKey,
-    async () => {
-      // If not in cache, fetch from database
-      const query = showAll ? {} : { isActive: true };
-      
-      return await Category.find(query)
-        .populate({
-          path: 'parent',
-          select: 'name slug'
-        });
-      // Removed .lean() to prevent document manipulation issues
-    },
-    'medium' // Cache for 5 minutes
-  );
-
-  res.json(categories);
+  try {
+    const categories = await Category.find({}).lean();
+    console.log('Categories found:', categories.length);
+    
+    console.timeEnd('getCategories');
+    console.log('Getting categories - End');
+    
+    res.json(categories);
+  } catch (error) {
+    console.error('Error in getCategories:', error);
+    res.status(500).json({
+      message: 'Error fetching categories',
+      error: error.message
+    });
+  }
 });
 
 // @desc    Get category by ID

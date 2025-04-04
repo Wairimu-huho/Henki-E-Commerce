@@ -1,21 +1,25 @@
-// src/context/CartContext.jsx
-import { createContext, useState, useEffect } from 'react';
+// src/context/CartContext.js
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
-export const CartContext = createContext();
+// Create the context
+const CartContext = createContext(null);
+
+// Export the context so it can be imported directly
+export { CartContext };
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Load cart from localStorage on initial render
+  // Load cart from localStorage on initial load
   useEffect(() => {
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
       try {
-        setCartItems(JSON.parse(storedCart));
-      } catch (err) {
-        console.error('Failed to parse cart from localStorage:', err);
+        const parsedCart = JSON.parse(savedCart);
+        setCartItems(parsedCart);
+      } catch (error) {
+        console.error('Failed to parse cart from localStorage:', error);
         localStorage.removeItem('cart');
       }
     }
@@ -29,21 +33,31 @@ export const CartProvider = ({ children }) => {
   // Add item to cart
   const addToCart = (product, quantity = 1) => {
     setCartItems(prevItems => {
-      // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(item => item._id === product._id);
       
       if (existingItemIndex >= 0) {
-        // Update quantity if item exists
+        // If item already exists in cart, update quantity
         const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + quantity
-        };
+        updatedItems[existingItemIndex].quantity += quantity;
         return updatedItems;
       } else {
-        // Add new item if it doesn't exist
+        // If item is not in cart, add it
         return [...prevItems, { ...product, quantity }];
       }
+    });
+  };
+
+  // Update item quantity in cart
+  const updateQuantity = (productId, quantity) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    
+    setCartItems(prevItems => {
+      return prevItems.map(item => 
+        item._id === productId ? { ...item, quantity } : item
+      );
     });
   };
 
@@ -52,55 +66,45 @@ export const CartProvider = ({ children }) => {
     setCartItems(prevItems => prevItems.filter(item => item._id !== productId));
   };
 
-  // Update item quantity
-  const updateQuantity = (productId, quantity) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    
-    setCartItems(prevItems => 
-      prevItems.map(item => 
-        item._id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  // Clear cart
+  // Clear entire cart
   const clearCart = () => {
     setCartItems([]);
-    localStorage.removeItem('cart');
   };
 
   // Calculate cart totals
-  const getCartTotals = () => {
+  const getCartTotal = () => {
     return cartItems.reduce(
-      (totals, item) => {
-        const itemPrice = item.price * item.quantity;
-        totals.itemsCount += item.quantity;
-        totals.subtotal += itemPrice;
-        return totals;
-      },
-      { itemsCount: 0, subtotal: 0 }
+      (total, item) => total + item.price * item.quantity,
+      0
     );
   };
 
-  return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        loading,
-        error,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        getCartTotals
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
+  const getItemsCount = () => {
+    return cartItems.reduce((count, item) => count + item.quantity, 0);
+  };
+
+  const value = {
+    cartItems,
+    loading,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    getCartTotal,
+    getItemsCount,
+  };
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
+// Custom hook to use the cart context
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+};
+
+// Also export the provider as a default export
 export default CartProvider;

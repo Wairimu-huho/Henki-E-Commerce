@@ -1,10 +1,13 @@
 // utils/cacheManager.js
 const NodeCache = require('node-cache');
+const Redis = require('ioredis'); // or your preferred caching solution
 
 // Create cache instances with different TTLs (time-to-live)
 const shortCache = new NodeCache({ stdTTL: 60 }); // 1 minute
 const mediumCache = new NodeCache({ stdTTL: 300 }); // 5 minutes
 const longCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
+
+const redis = new Redis(/* your redis config */);
 
 /**
  * Cache wrapper for database queries
@@ -13,26 +16,31 @@ const longCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
  * @param {string} duration - Cache duration ('short', 'medium', 'long')
  * @returns {Promise<any>} - Cached or freshly fetched data
  */
-const getCachedData = async (key, fetchFunction, duration = 'medium') => {
-  // Select cache based on duration
-  const cache = 
-    duration === 'short' ? shortCache : 
-    duration === 'long' ? longCache : 
-    mediumCache;
-  
-  // Check if data exists in cache
-  const cachedData = cache.get(key);
-  if (cachedData !== undefined) {
-    return cachedData;
+const getCachedData = async (key, fetchFunction, duration = 'short') => {
+  try {
+    // Try to get from cache
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // If not in cache, fetch fresh data
+    const freshData = await fetchFunction();
+    
+    // Set cache duration
+    const expiryTime = duration === 'short' ? 300 : // 5 minutes
+                      duration === 'medium' ? 1800 : // 30 minutes
+                      3600; // 1 hour (default)
+
+    // Store in cache
+    await redis.setex(key, expiryTime, JSON.stringify(freshData));
+    
+    return freshData;
+  } catch (error) {
+    console.error('Cache error:', error);
+    // If cache fails, just return the fresh data
+    return fetchFunction();
   }
-  
-  // If not in cache, fetch fresh data
-  const freshData = await fetchFunction();
-  
-  // Store in cache for next time
-  cache.set(key, freshData);
-  
-  return freshData;
 };
 
 /**
@@ -40,17 +48,11 @@ const getCachedData = async (key, fetchFunction, duration = 'medium') => {
  * @param {string} key - Cache key to clear
  * @param {string} duration - Cache duration ('short', 'medium', 'long', 'all')
  */
-const clearCache = (key, duration = 'all') => {
-  if (duration === 'short' || duration === 'all') {
-    shortCache.del(key);
-  }
-  
-  if (duration === 'medium' || duration === 'all') {
-    mediumCache.del(key);
-  }
-  
-  if (duration === 'long' || duration === 'all') {
-    longCache.del(key);
+const clearCache = async (key) => {
+  try {
+    await redis.del(key);
+  } catch (error) {
+    console.error('Error clearing cache:', error);
   }
 };
 
@@ -58,18 +60,15 @@ const clearCache = (key, duration = 'all') => {
  * Clear cache entries by pattern
  * @param {string} pattern - Pattern to match cache keys (e.g., 'product:*')
  */
-const clearCachePattern = (pattern) => {
-  const regex = new RegExp(pattern.replace('*', '.*'));
-  
-  // Clear from all caches
-  [shortCache, mediumCache, longCache].forEach(cache => {
-    const keys = cache.keys();
-    keys.forEach(key => {
-      if (regex.test(key)) {
-        cache.del(key);
-      }
-    });
-  });
+const clearCachePattern = async (pattern) => {
+  try {
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
+  } catch (error) {
+    console.error('Error clearing cache pattern:', error);
+  }
 };
 
 module.exports = {

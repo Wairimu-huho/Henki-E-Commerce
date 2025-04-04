@@ -1,11 +1,10 @@
 // src/components/common/AdminRoute.jsx
 import { Navigate, Outlet } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 
 const AdminRoute = () => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { user, loading } = useAuth();
 
-  // Show loading spinner while checking auth status
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -14,17 +13,7 @@ const AdminRoute = () => {
     );
   }
 
-  // Redirect if not authenticated or not admin
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Render child routes if authenticated and admin
-  return <Outlet />;
+  return user && user.role === 'admin' ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 export default AdminRoute;

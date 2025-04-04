@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useCart from '../../hooks/useCart';
 import productService from '../../services/productService';
+import { useAuth as useAuthContext } from '../../context/AuthContext';
 
 const Header = () => {
   const { user, isAuthenticated, isAdmin = false, logout } = useAuth();
@@ -28,7 +29,7 @@ const Header = () => {
         setCategories([]);
       }
     };
-
+  
     fetchCategories();
   }, []);
   
@@ -63,6 +64,8 @@ const Header = () => {
   // Helper for safe rendering
   const isUserAdmin = isAuthenticated && isAdmin === true;
   
+  const { user: authUser } = useAuthContext();
+
   return (
     <header className="bg-gray-900 text-white shadow-md">
       <div className="container mx-auto px-4 py-4">

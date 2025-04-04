@@ -21,21 +21,21 @@ const Home = () => {
       title: "Summer Sale",
       description: "Up to 50% off on summer essentials",
       bgColor: "bg-blue-600",
-      image: "https://via.placeholder.com/800x400?text=Summer+Sale",
+      image: "https://placehold.co/800x400/blue/white?text=Summer+Sale",
     },
     {
       id: 2,
       title: "New Collection",
       description: "Check out our latest fashion arrivals",
       bgColor: "bg-purple-600",
-      image: "https://via.placeholder.com/800x400?text=New+Collection",
+      image: "https://placehold.co/800x400/purple/white?text=New+Collection",
     },
     {
       id: 3,
       title: "Free Shipping",
       description: "On all orders over $50",
       bgColor: "bg-green-600",
-      image: "https://via.placeholder.com/800x400?text=Free+Shipping",
+      image: "https://placehold.co/800x400/green/white?text=Free+Shipping",
     },
   ];
 
@@ -43,27 +43,34 @@ const Home = () => {
     const fetchHomeData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // Fetch featured products (using filters to get products with featured=true)
-        const featuredData = await productService.getProducts({
-          featured: true,
-          limit: 4,
-        });
-        setFeaturedProducts(featuredData.products);
+        // Use Promise.allSettled to prevent one failed request from blocking others
+        const [featuredResult, newArrivalsResult, categoriesResult] = await Promise.allSettled([
+          productService.getFeaturedProducts(),
+          productService.getProducts({
+            sortBy: 'createdAt:desc',
+            limit: 8
+          }),
+          productService.getCategories()
+        ]);
 
-        // Fetch new arrivals (using sort to get the newest products)
-        const newArrivalsData = await productService.getProducts({
-          sort: "-createdAt",
-          limit: 8,
-        });
-        setNewArrivals(newArrivalsData.products);
+        // Handle each result individually
+        if (featuredResult.status === 'fulfilled') {
+          setFeaturedProducts(Array.isArray(featuredResult.value) ? featuredResult.value : []);
+        }
 
-        // Fetch categories
-        const categoriesData = await productService.getCategories();
-        setCategories(categoriesData);
+        if (newArrivalsResult.status === 'fulfilled') {
+          setNewArrivals(Array.isArray(newArrivalsResult.value.products) ? newArrivalsResult.value.products : []);
+        }
+
+        if (categoriesResult.status === 'fulfilled') {
+          setCategories(Array.isArray(categoriesResult.value) ? categoriesResult.value : []);
+        }
+
       } catch (err) {
-        console.error("Failed to fetch home data:", err);
-        setError("Failed to load products. Please try again later.");
+        console.error('Failed to fetch home data:', err);
+        setError('Failed to load content. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -211,6 +218,49 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Products Section */}
+      <section className="py-12 px-4 bg-gray-50">
+        <div className="container mx-auto">
+          <h2 className="text-2xl font-bold mb-8 text-center">Featured Products</h2>
+          {featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center py-8">Featured products coming soon.</p>
+          )}
+          <div className="text-center mt-8">
+            <Link to="/products">
+              <Button variant="outline">View All Products</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* New Arrivals Section */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto">
+          <h2 className="text-2xl font-bold mb-8 text-center">New Arrivals</h2>
+          {newArrivals.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {newArrivals.slice(0, 4).map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center py-8">New arrivals coming soon.</p>
+          )}
+          <div className="text-center mt-8">
+            <Link to="/products?sort=newest">
+              <Button variant="outline">View All New Arrivals</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-12 px-4 bg-white">
         <div className="container mx-auto">
@@ -300,218 +350,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Seller Spotlight - Only show if there are sellers with featured products */}
-      <section className="py-12 px-4 bg-gray-50">
-        <div className="container mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold">Seller Spotlight</h2>
-            <Link
-              to="/sellers"
-              className="text-blue-600 hover:text-blue-800 flex items-center"
-            >
-              View All Sellers
-              <svg
-                className="w-5 h-5 ml-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 5l7 7-7 7"
-                ></path>
-              </svg>
-            </Link>
-          </div>
-
-          {/* Mock sellers data - replace with actual API data later */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
-                    F
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium text-lg">Fashion Emporium</h3>
-                    <div className="flex items-center mt-1">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <svg
-                            key={star}
-                            className="w-4 h-4 text-yellow-400"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                          </svg>
-                        ))}
-                      </div>
-                      <span className="text-gray-600 text-sm ml-1">
-                        (128 reviews)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-4 text-gray-600">
-                  Specializing in trendy clothing and accessories for all
-                  seasons.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                    Fashion
-                  </span>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                    Clothing
-                  </span>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                    Accessories
-                  </span>
-                </div>
-                <Link
-                  to="/seller/fashion-emporium"
-                  className="mt-4 inline-block text-blue-600 hover:underline"
-                >
-                  Visit Store
-                </Link>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xl">
-                    T
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium text-lg">Tech Innovations</h3>
-                    <div className="flex items-center mt-1">
-                      <div className="flex">
-                        {[1, 2, 3, 4].map((star) => (
-                          <svg
-                            key={star}
-                            className="w-4 h-4 text-yellow-400"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                          </svg>
-                        ))}
-                        <svg
-                          className="w-4 h-4 text-gray-300"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                        </svg>
-                      </div>
-                      <span className="text-gray-600 text-sm ml-1">
-                        (96 reviews)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-4 text-gray-600">
-                  Cutting-edge electronics and gadgets for tech enthusiasts.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                    Electronics
-                  </span>
-                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                    Gadgets
-                  </span>
-                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                    Smart Home
-                  </span>
-                </div>
-                <Link
-                  to="/seller/tech-innovations"
-                  className="mt-4 inline-block text-blue-600 hover:underline"
-                >
-                  Visit Store
-                </Link>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xl">
-                    H
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium text-lg">Home Essentials</h3>
-                    <div className="flex items-center mt-1">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <svg
-                            key={star}
-                            className="w-4 h-4 text-yellow-400"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                          </svg>
-                        ))}
-                      </div>
-                      <span className="text-gray-600 text-sm ml-1">
-                        (214 reviews)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-4 text-gray-600">
-                  Quality home decor and kitchenware for your living space.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                    Home Decor
-                  </span>
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                    Kitchenware
-                  </span>
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                    Furniture
-                  </span>
-                </div>
-                <Link
-                  to="/seller/home-essentials"
-                  className="mt-4 inline-block text-blue-600 hover:underline"
-                >
-                  Visit Store
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Join as a Seller CTA */}
-      <section className="py-12 px-4 bg-blue-600 text-white">
-        <div className="container mx-auto">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-4">Become a Seller</h2>
-            <p className="text-xl mb-8">
-              Join our marketplace and start selling your products to thousands
-              of customers. Manage your own store, set your prices, and grow
-              your business with us.
-            </p>
-            <Link to="/seller/register">
-              <Button
-                variant="secondary"
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-100 px-8"
-              >
-                Start Selling Today
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* Newsletter Subscription */}
       <section className="py-12 px-4 bg-gray-100">
         <div className="container mx-auto">
@@ -537,6 +375,18 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-100 text-red-700 p-4 rounded-md mb-6">
+          {error}
+        </div>
+      )}
     </div>
   );
 };
