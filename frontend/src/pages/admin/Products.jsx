@@ -1,8 +1,10 @@
+// src/pages/admin/Products.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
+import Button from '../../components/common/Button';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
@@ -78,7 +80,7 @@ const AdminProducts = () => {
         <h2 className="text-xl font-semibold">Products</h2>
         <Link
           to="/admin/products/add"
-          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark"
+          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
         >
           Add New Product
         </Link>
@@ -103,11 +105,27 @@ const AdminProducts = () => {
         </form>
       </div>
 
+      {error && (
+        <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
+
       {/* Products Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
         {loading ? (
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-6 text-center">
+            <p className="text-gray-500 mb-4">No products found</p>
+            <Link
+              to="/admin/products/add"
+              className="text-primary hover:underline"
+            >
+              Add your first product
+            </Link>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -203,4 +221,4 @@ const AdminProducts = () => {
   );
 };
 
-export default AdminProducts; 
+export default AdminProducts;

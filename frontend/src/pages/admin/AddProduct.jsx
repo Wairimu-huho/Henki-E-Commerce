@@ -1,7 +1,9 @@
+// src/pages/admin/AddProduct.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import ProductForm from '../../components/admin/ProductForm';
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -10,56 +12,107 @@ const AddProduct = () => {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('products');
   
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    countInStock: '',
-    brand: '',
-    category: '',
-    image: '',
-    featured: false,
-    isActive: true
-  });
-
   useEffect(() => {
     fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     try {
+      setLoading(true);
       const response = await axios.get('/api/categories');
       setCategories(response.data);
+      setLoading(false);
     } catch (err) {
       setError('Failed to fetch categories');
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
-      
-      await axios.post('/api/products', formData);
-      navigate('/admin/products', { 
-        state: { success: 'Product created successfully' }
-      });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create product');
-    } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmit = async (productData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      // Step 1: Create the product
+      const formattedData = {
+        name: productData.name,
+        brand: productData.brand || 'Generic Brand',
+        category: productData.category || null,
+        description: productData.description || '',
+        price: parseFloat(productData.price) || 0,
+        countInStock: parseInt(productData.countInStock) || 0,
+        image: 'https://via.placeholder.com/300', // Placeholder for now
+        featured: Boolean(productData.featured),
+        isActive: productData.isActive !== undefined ? Boolean(productData.isActive) : true
+      };
+      
+      // Create the product
+      const response = await axios.post(
+        '/api/admin/products',
+        formattedData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      const newProduct = response.data;
+      
+      // Step 2: If we have actual image files, upload them
+      if (productData.images && productData.images.length > 0) {
+        try {
+          // Get the new product ID from the response
+          const productId = newProduct._id;
+          
+          // Create a FormData object for the image upload
+          const imageFormData = new FormData();
+          imageFormData.append('image', productData.images[0]); // Upload the first image
+          
+          // Upload the image with extended timeout
+          await axios.post(
+            `/api/admin/products/${productId}/upload-image`,
+            imageFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                Authorization: `Bearer ${token}`,
+              },
+              timeout: 60000, // Increase timeout to 60 seconds
+            }
+          );
+          
+          console.log('Image uploaded successfully');
+        } catch (imageError) {
+          console.error('Error uploading image:', imageError);
+          // Don't fail the whole process, just show a warning
+          setError('Product created, but image upload failed. You can upload images later.');
+          // Continue with navigation despite image upload failure
+        }
+      }
+      
+      // Redirect to product list
+      navigate('/admin/products', { 
+        state: { success: 'Product created successfully!' } 
+      });
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error creating product:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to create product';
+      setError(errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
   const menuItems = [
     { id: 'overview', label: 'Dashboard Overview', icon: 'grid', link: '/admin/dashboard' },
     { id: 'users', label: 'User Management', icon: 'users', link: '/admin/users' },
@@ -75,153 +128,29 @@ const AddProduct = () => {
       activeTab={activeTab}
       setActiveTab={setActiveTab}
     >
-      <div className="max-w-2xl mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {loading && !categories.length ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-semibold mb-6">Add New Product</h2>
+          
           {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-md">
+            <div className="bg-red-100 text-red-700 p-4 rounded-md mb-6">
               {error}
             </div>
           )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="4"
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Price</label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Stock</label>
-              <input
-                type="number"
-                name="countInStock"
-                value={formData.countInStock}
-                onChange={handleChange}
-                min="0"
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Brand</label>
-            <input
-              type="text"
-              name="brand"
-              value={formData.brand}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              required
-            >
-              <option value="">Select a category</option>
-              {categories.map(category => (
-                <option key={category._id} value={category._id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Image URL</label>
-            <input
-              type="url"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              required
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="featured"
-                checked={formData.featured}
-                onChange={handleChange}
-                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-              />
-              <label className="ml-2 text-sm text-gray-700">Featured Product</label>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleChange}
-                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-              />
-              <label className="ml-2 text-sm text-gray-700">Active</label>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/products')}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? 'Creating...' : 'Create Product'}
-            </button>
-          </div>
-        </form>
-      </div>
+          
+          <ProductForm 
+            categories={categories}
+            onSubmit={handleSubmit}
+            onCancel={() => navigate('/admin/products')}
+          />
+        </div>
+      )}
     </DashboardLayout>
   );
 };
 
-export default AddProduct; 
+export default AddProduct;

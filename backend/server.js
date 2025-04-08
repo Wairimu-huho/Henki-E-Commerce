@@ -1,3 +1,5 @@
+// server.js - updated with adminProductRoutes
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -6,6 +8,7 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const adminProductRoutes = require('./routes/adminProductRoutes'); // Add this line
 const reviewRoutes = require('./routes/reviewRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -51,6 +54,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 // Mount the admin routes
 app.use('/api/admin', adminRoutes);
+// Mount the admin product routes
+app.use('/api/admin', adminProductRoutes); // Add this line
 // reviews //
 app.use('/api/reviews', reviewRoutes);
 // products and category //

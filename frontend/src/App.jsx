@@ -25,13 +25,15 @@ const OrderDetail = lazy(() => import('./pages/orders/OrderDetail'));
 // Seller pages
 const SellerDashboard = lazy(() => import('./pages/seller/Dashboard'));
 const SellerProducts = lazy(() => import('./pages/seller/Products'));
-const AddProduct = lazy(() => import('./pages/seller/AddProduct'));
-const EditProduct = lazy(() => import('./pages/seller/EditProduct'));
+const AddSellerProduct = lazy(() => import('./pages/seller/AddProduct'));
+const EditSellerProduct = lazy(() => import('./pages/seller/EditProduct'));
 
 // Admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const AdminProducts = lazy(() => import('./pages/admin/Products'));
+const AdminAddProduct = lazy(() => import('./pages/admin/AddProduct'));
+const AdminEditProduct = lazy(() => import('./pages/admin/EditProduct'));
 const AdminOrders = lazy(() => import('./pages/admin/Orders'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
 
@@ -54,6 +56,8 @@ function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<UserManagement />} />
                 <Route path="/admin/products" element={<AdminProducts />} />
+                <Route path="/admin/products/add" element={<AdminAddProduct />} />
+                <Route path="/admin/products/edit/:id" element={<AdminEditProduct />} />
                 <Route path="/admin/orders" element={<AdminOrders />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
@@ -62,8 +66,8 @@ function App() {
               <Route element={<SellerRoute />}>
                 <Route path="/seller/dashboard" element={<SellerDashboard />} />
                 <Route path="/seller/products" element={<SellerProducts />} />
-                <Route path="/seller/products/add" element={<AddProduct />} />
-                <Route path="/seller/products/edit/:id" element={<EditProduct />} />
+                <Route path="/seller/products/add" element={<AddSellerProduct />} />
+                <Route path="/seller/products/edit/:id" element={<EditSellerProduct />} />
               </Route>
               
               {/* Routes with Layout */}
